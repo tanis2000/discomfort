@@ -1,0 +1,57 @@
+package cmd
+
+import (
+    "discomfort/service"
+    "fmt"
+    "github.com/spf13/cobra"
+    "github.com/spf13/viper"
+    "log"
+    "os"
+    "os/signal"
+    "syscall"
+)
+
+var discordToken string
+
+var rootCmd = &cobra.Command{
+    Use:   "discomfort",
+    Short: "discomfort is a Discord bot to control ComfyUI",
+    Long:  `Your Discord bot for ComfyUI management`,
+    Run: func(cmd *cobra.Command, args []string) {
+        bot := service.NewBot(discordToken)
+        err := bot.Start()
+        if err != nil {
+            log.Fatal(err.Error())
+        }
+        sc := make(chan os.Signal, 1)
+        signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
+        log.Println("Press Ctrl+C to exit")
+        <-sc
+        log.Println("Gracefully shutting down.")
+        err = bot.Stop()
+        if err != nil {
+            log.Fatal(err.Error())
+        }
+    },
+}
+
+func init() {
+    cobra.OnInitialize(initConfig)
+    rootCmd.PersistentFlags().StringVar(&discordToken, "token", "", "Discord API token")
+    err := viper.BindPFlag("token", rootCmd.PersistentFlags().Lookup("token"))
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
+func initConfig() {
+    viper.AutomaticEnv()
+}
+
+func Execute() {
+    if err := rootCmd.Execute(); err != nil {
+        log.Println(err.Error())
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(2)
+    }
+}
