@@ -12,13 +12,15 @@ import (
 )
 
 var discordToken string
+var comfyAddress string
+var comfyPort int
 
 var rootCmd = &cobra.Command{
     Use:   "discomfort",
     Short: "discomfort is a Discord bot to control ComfyUI",
     Long:  `Your Discord bot for ComfyUI management`,
     Run: func(cmd *cobra.Command, args []string) {
-        bot := service.NewBot(discordToken)
+        bot := service.NewBot(discordToken, comfyAddress, comfyPort)
         err := bot.Start()
         if err != nil {
             log.Fatal(err.Error())
@@ -38,7 +40,17 @@ var rootCmd = &cobra.Command{
 func init() {
     cobra.OnInitialize(initConfig)
     rootCmd.PersistentFlags().StringVar(&discordToken, "token", "", "Discord API token")
+    rootCmd.PersistentFlags().StringVar(&comfyAddress, "address", "127.0.0.1", "ComfyUI address (IP or hostname)")
+    rootCmd.PersistentFlags().IntVar(&comfyPort, "port", 8188, "ComfyUI port")
     err := viper.BindPFlag("token", rootCmd.PersistentFlags().Lookup("token"))
+    if err != nil {
+        log.Fatal(err)
+    }
+    err = viper.BindPFlag("address", rootCmd.PersistentFlags().Lookup("address"))
+    if err != nil {
+        log.Fatal(err)
+    }
+    err = viper.BindPFlag("port", rootCmd.PersistentFlags().Lookup("port"))
     if err != nil {
         log.Fatal(err)
     }

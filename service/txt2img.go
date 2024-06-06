@@ -12,7 +12,7 @@ import (
     "strings"
 )
 
-func (b *Bot) initFaceSwap() (*client.Client, error) {
+func (b *Bot) initTxt2Img() (*client.Client, error) {
     callbacks := &client.Callbacks{
         OnStatus: func(c *client.Client, queuedCount int) {
             log.Printf("Queue size: %d", queuedCount)
@@ -62,14 +62,29 @@ func (b *Bot) initFaceSwap() (*client.Client, error) {
                         Reader:      bytes.NewReader(buf),
                     }
                     files = append(files, file)
+
+                    components := []discordgo.MessageComponent{
+                        discordgo.ActionsRow{
+                            Components: []discordgo.MessageComponent{
+                                discordgo.Button{
+                                    CustomID: "txt2img-reseed",
+                                    Label:    "Reseed with a random value",
+                                    Emoji: &discordgo.ComponentEmoji{
+                                        Name: "🎲",
+                                    },
+                                    Style: discordgo.SuccessButton},
+                            },
+                        },
+                    }
                     if process, ok := b.processes[response.PromptID]; ok {
                         _, err := process.Session.FollowupMessageCreate(process.Interaction, true, &discordgo.WebhookParams{
-                            Content: "Image for prompt with ID: " + response.PromptID,
-                            Files:   files,
+                            Content:    "Image for prompt with ID: " + response.PromptID,
+                            Files:      files,
+                            Components: components,
                         })
 
                         if err != nil {
-                            log.Printf("could not respond to interaction: %s", err)
+                            log.Printf("[txt2img] could not followup to interaction: %s", err)
                         }
                     }
                 }
@@ -99,128 +114,100 @@ func (b *Bot) initFaceSwap() (*client.Client, error) {
     return c, nil
 }
 
-func (b *Bot) handleFaceSwap(s *discordgo.Session, i *discordgo.InteractionCreate, opts optionMap) {
+func (b *Bot) handleTxt2Img(s *discordgo.Session, i *discordgo.InteractionCreate, opts optionMap) {
     comfyClient, err := b.initTxt2Img()
     if err != nil {
         log.Printf("Cannot initialize the ComfyUI client: %s", err)
         return
     }
-    //err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-    //    Type: discordgo.InteractionResponseDeferredMessageUpdate,
-    //})
-    //if err != nil {
-    //    log.Printf("could not respond to interaction: %s", err)
-    //}
+    builder := new(strings.Builder)
 
-    switch i.Type {
-    case discordgo.InteractionApplicationCommand:
-        data := i.ApplicationCommandData()
-        log.Printf("%v", data)
-        builder := new(strings.Builder)
+    positive := opts["positive"].Value.(string)
+    negative := opts["negative"].Value.(string)
+    seed := rand.Uint64()
+    if val, ok := opts["seed"]; ok {
+        seed = val.UintValue()
+    }
 
-        positive := opts["positive"].Value.(string)
-        negative := opts["negative"].Value.(string)
-        image := opts["image"].Value.(string)
-        seed := rand.Uint64()
-        if val, ok := opts["seed"]; ok {
-            seed = val.UintValue()
-        }
+    buf, err := os.ReadFile("workflows/txt2img/txt2img_api.json")
+    if err != nil {
+        log.Printf("Cannot read workflow workflows/txt2img/txt2img_api.json: %s", err)
+        return
+    }
+    wf, err := workflow.NewWorkflow(string(buf))
+    if err != nil {
+        log.Printf("Cannot create workflow: %s", err)
+        return
+    }
 
-        buf, err := os.ReadFile("workflows/faceswap/faceswap_api.json")
-        if err != nil {
-            log.Printf("Cannot read workflow workflows/faceswap/faceswap_api.json: %s", err)
-            return
-        }
-        wf, err := workflow.NewWorkflow(string(buf))
-        if err != nil {
-            log.Printf("Cannot create workflow: %s", err)
-            return
-        }
+    positiveNode := wf.NodeByID("3")
+    if positiveNode != nil {
+        positiveNode.Inputs.Set("text_g", positive)
+        positiveNode.Inputs.Set("text_l", positive)
+    }
 
-        positiveNode := wf.NodeByID("7")
-        if positiveNode != nil {
-            positiveNode.Inputs.Set("text", positive)
-        }
+    positiveNode = wf.NodeByID("7")
+    if positiveNode != nil {
+        positiveNode.Inputs.Set("text", positive)
+    }
 
-        negativeNode := wf.NodeByID("8")
-        if negativeNode != nil {
-            negativeNode.Inputs.Set("text", negative)
-        }
+    negativeNode := wf.NodeByID("5")
+    if negativeNode != nil {
+        negativeNode.Inputs.Set("text_g", negative)
+        negativeNode.Inputs.Set("text_l", negative)
+    }
 
-        imageNode := wf.NodeByID("1")
-        if imageNode != nil {
-            imageNode.Inputs.Set("image", image)
-        }
+    negativeNode = wf.NodeByID("8")
+    if negativeNode != nil {
+        negativeNode.Inputs.Set("text", negative)
+    }
 
-        samplerNode := wf.NodeByID("9")
-        if samplerNode != nil {
-            samplerNode.Inputs.Set("seed", seed)
-        }
+    sampler1Node := wf.NodeByID("9")
+    if sampler1Node != nil {
+        sampler1Node.Inputs.Set("noise_seed", seed)
+    }
 
-        resp, err := comfyClient.QueuePrompt(-1, wf)
-        if err != nil {
-            builder.WriteString("could not queue prompt: " + err.Error())
-            err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-                Type: discordgo.InteractionResponseChannelMessageWithSource,
-                Data: &discordgo.InteractionResponseData{
-                    Content: builder.String(),
-                },
-            })
-            if err != nil {
-                log.Printf("could not respond to interaction: %s", err)
-            }
-            return
-        }
+    sampler2Node := wf.NodeByID("11")
+    if sampler2Node != nil {
+        sampler2Node.Inputs.Set("noise_seed", seed)
+    }
 
-        go consumeMessages(resp)
-        b.processes[resp.PromptID] = Process{
-            PromptID:    resp.PromptID,
-            Interaction: i.Interaction,
-            Session:     s,
-            ComfyClient: comfyClient,
-        }
-
-        builder.WriteString("Queued prompt with ID: " + resp.PromptID + "\n")
-        builder.WriteString("Positive prompt: " + positive + "\n")
-        builder.WriteString("Negative prompt: " + negative + "\n")
-        builder.WriteString(fmt.Sprintf("Seed: %d\n", seed))
-
+    resp, err := comfyClient.QueuePrompt(-1, wf)
+    if err != nil {
+        builder.WriteString("could not queue prompt: " + err.Error())
         err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
             Type: discordgo.InteractionResponseChannelMessageWithSource,
             Data: &discordgo.InteractionResponseData{
                 Content: builder.String(),
             },
         })
-
         if err != nil {
             log.Printf("could not respond to interaction: %s", err)
         }
-
-    case discordgo.InteractionApplicationCommandAutocomplete:
-        choices := make([]*discordgo.ApplicationCommandOptionChoice, 0)
-        for _, image := range b.imageDB.Images {
-            choice := &discordgo.ApplicationCommandOptionChoice{
-                Name:  image,
-                Value: image,
-            }
-            if opts["image"].StringValue() != "" {
-                if strings.Contains(image, opts["image"].StringValue()) {
-                    choices = append(choices, choice)
-                }
-            } else {
-                choices = append(choices, choice)
-            }
-        }
-        fmt.Printf("Choices: %v\n", choices[0].Name)
-        err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-            Type: discordgo.InteractionApplicationCommandAutocompleteResult,
-            Data: &discordgo.InteractionResponseData{
-                Choices: choices,
-            },
-        })
-        if err != nil {
-            log.Printf("could not respond to interaction: %s", err)
-        }
+        return
     }
 
+    go consumeMessages(resp)
+    b.processes[resp.PromptID] = Process{
+        PromptID:    resp.PromptID,
+        Interaction: i.Interaction,
+        Session:     s,
+        ComfyClient: comfyClient,
+    }
+
+    builder.WriteString("Queued prompt with ID: " + resp.PromptID + "\n")
+    builder.WriteString("Positive prompt: " + positive + "\n")
+    builder.WriteString("Negative prompt: " + negative + "\n")
+    builder.WriteString(fmt.Sprintf("Seed: %d\n", seed))
+
+    err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+        Type: discordgo.InteractionResponseChannelMessageWithSource,
+        Data: &discordgo.InteractionResponseData{
+            Content: builder.String(),
+        },
+    })
+
+    if err != nil {
+        log.Printf("could not respond to interaction: %s", err)
+    }
 }
