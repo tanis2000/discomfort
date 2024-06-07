@@ -2,6 +2,7 @@ package service
 
 import (
     "encoding/json"
+    "errors"
     "os"
 )
 
@@ -10,7 +11,9 @@ type ImageDB struct {
 }
 
 func NewImageDB() *ImageDB {
-    return &ImageDB{}
+    return &ImageDB{
+        Images: make([]string, 0),
+    }
 }
 
 func (i *ImageDB) Add(image string) {
@@ -23,7 +26,7 @@ func (i *ImageDB) Save() error {
         return err
     }
 
-    err = os.WriteFile("images.json", b, 0644)
+    err = os.WriteFile("data/images.json", b, 0644)
     if err != nil {
         return err
     }
@@ -32,10 +35,16 @@ func (i *ImageDB) Save() error {
 }
 
 func (i *ImageDB) Load() error {
-    b, err := os.ReadFile("images.json")
+    b, err := os.ReadFile("data/images.json")
+    if errors.Is(err, os.ErrNotExist) {
+        return nil
+    }
     if err != nil {
         return err
     }
     err = json.Unmarshal(b, i)
+    if err != nil {
+        return err
+    }
     return nil
 }
