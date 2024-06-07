@@ -129,6 +129,7 @@ func (h Handler) HandleCommand(ctx service.Context, s *discordgo.Session, i *dis
         PositivePrompt:    positive,
         NegativePrompt:    negative,
         Seed:              seed,
+        NodesCount:        len(wf.Map),
     })
 
     builder.WriteString("Queued prompt with ID: " + resp.PromptID + "\n")
@@ -215,34 +216,27 @@ func (h Handler) setup(ctx service.Context) (*client.Client, error) {
                         },
                     }
 
-                    embed := &discordgo.MessageEmbed{
-                        Image: &discordgo.MessageEmbedImage{
-                            URL: fmt.Sprintf("attachment://%s", files[0].Name),
+                    embed := service.EmbedTemplate()
+                    embed.Image = &discordgo.MessageEmbedImage{
+                        URL: fmt.Sprintf("attachment://%s", files[0].Name),
+                    }
+                    embed.Fields = []*discordgo.MessageEmbedField{
+                        {
+                            Name:  "Prompt",
+                            Value: process.PositivePrompt,
                         },
-                        Author: &discordgo.MessageEmbedAuthor{
-                            Name: "discomfort",
+                        {
+                            Name:  "Negative prompt",
+                            Value: process.NegativePrompt,
                         },
-                        Footer: &discordgo.MessageEmbedFooter{
-                            Text: "Powered by discomfort",
+                        {
+                            Name:  "Seed",
+                            Value: fmt.Sprintf("%d", process.Seed),
                         },
-                        Fields: []*discordgo.MessageEmbedField{
-                            {
-                                Name:  "Prompt",
-                                Value: process.PositivePrompt,
-                            },
-                            {
-                                Name:  "Negative prompt",
-                                Value: process.NegativePrompt,
-                            },
-                            {
-                                Name:  "Seed",
-                                Value: fmt.Sprintf("%d", process.Seed),
-                            },
-                            {
-                                Name:   "User",
-                                Value:  fmt.Sprintf("<@%s>", service.GetDiscordUserId(process.InteractionCreate)),
-                                Inline: true,
-                            },
+                        {
+                            Name:   "User",
+                            Value:  fmt.Sprintf("<@%s>", service.GetDiscordUserId(process.InteractionCreate)),
+                            Inline: true,
                         },
                     }
 
@@ -264,6 +258,20 @@ func (h Handler) setup(ctx service.Context) (*client.Client, error) {
                         }
                     }
                 }
+            } else {
+                process := ctx.Bot.GetProcessByPromptID(response.PromptID)
+                if process == nil {
+                    return
+                }
+                process.CurrentNode = node
+                content := fmt.Sprintf("Running node %s/%d...", node, process.NodesCount)
+                _, err := process.Session.InteractionResponseEdit(process.InteractionCreate.Interaction, &discordgo.WebhookEdit{
+                    Content: &content,
+                })
+
+                if err != nil {
+                    log.Printf("[txt2img] could not followup to interaction: %s", err)
+                }
             }
 
         },
@@ -273,7 +281,7 @@ func (h Handler) setup(ctx service.Context) (*client.Client, error) {
             if process == nil {
                 return
             }
-            builder.WriteString(fmt.Sprintf("%d/%d", progress.Value, progress.Max))
+            builder.WriteString(fmt.Sprintf("Running node %s/%d\nStep %d/%d", process.CurrentNode, process.NodesCount, progress.Value, progress.Max))
             content := builder.String()
             _, err := process.Session.InteractionResponseEdit(process.InteractionCreate.Interaction, &discordgo.WebhookEdit{
                 Content: &content,

@@ -17,3 +17,17 @@ func GetDiscordUserId(i *discordgo.InteractionCreate) string {
         return i.Interaction.Member.User.ID
     }
 }
+
+func EmbedTemplate() *discordgo.MessageEmbed {
+    embed := &discordgo.MessageEmbed{
+        Author: &discordgo.MessageEmbedAuthor{
+            Name:    "discomfort",
+            IconURL: "https://github.com/tanis2000/discomfort/blob/master/docs/logo/logo-64.png?raw=true",
+        },
+        Footer: &discordgo.MessageEmbedFooter{
+            Text:    "Powered by discomfort",
+            IconURL: "https://github.com/tanis2000/discomfort/blob/master/docs/logo/logo-64.png?raw=true",
+        },
+    }
+    return embed
+}

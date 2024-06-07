@@ -13,4 +13,6 @@ type Process struct {
     PositivePrompt    string
     NegativePrompt    string
     Seed              uint64
+    NodesCount        int
+    CurrentNode       string
 }
