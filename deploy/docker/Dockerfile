@@ -26,11 +26,9 @@ WORKDIR /
 COPY --from=build-stage /discomfort /discomfort
 COPY --chmod=777 --from=build-stage /app/deploy/docker/run.sh /run.sh
 COPY --from=build-stage /app/workflows /workflows
+COPY --from=build-stage /app/docs /docs
 RUN mkdir /data
 
-EXPOSE 8080
-
-#USER nonroot:nonroot
 ENV TOKEN=""
 ENV COMFY_ADDRESS="localhost"
 ENV COMFY_PORT=8188

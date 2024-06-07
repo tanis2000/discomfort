@@ -129,10 +129,13 @@ func (h Handler) HandleCommand(ctx service.Context, s *discordgo.Session, i *dis
 
         go consumeMessages(resp)
         ctx.Bot.AddProcess(resp.PromptID, service.Process{
-            PromptID:    resp.PromptID,
-            Interaction: i.Interaction,
-            Session:     s,
-            ComfyClient: comfyClient,
+            PromptID:          resp.PromptID,
+            InteractionCreate: i,
+            Session:           s,
+            ComfyClient:       comfyClient,
+            PositivePrompt:    positive,
+            NegativePrompt:    negative,
+            Seed:              seed,
         })
 
         builder.WriteString("Queued prompt with ID: " + resp.PromptID + "\n")
@@ -194,7 +197,7 @@ func (h Handler) setup(ctx service.Context) (*client.Client, error) {
             if node == "" {
                 process := ctx.Bot.GetProcessByPromptID(response.PromptID)
                 if process != nil {
-                    _, err := process.Session.FollowupMessageCreate(process.Interaction, true, &discordgo.WebhookParams{
+                    _, err := process.Session.FollowupMessageCreate(process.InteractionCreate.Interaction, true, &discordgo.WebhookParams{
                         Content: "Execution completed for prompt with ID: " + response.PromptID,
                     })
 
@@ -231,7 +234,7 @@ func (h Handler) setup(ctx service.Context) (*client.Client, error) {
                     files = append(files, file)
                     process := ctx.Bot.GetProcessByPromptID(response.PromptID)
                     if process != nil {
-                        _, err := process.Session.FollowupMessageCreate(process.Interaction, true, &discordgo.WebhookParams{
+                        _, err := process.Session.FollowupMessageCreate(process.InteractionCreate.Interaction, true, &discordgo.WebhookParams{
                             Content: "Image for prompt with ID: " + response.PromptID,
                             Files:   files,
                         })
@@ -252,7 +255,7 @@ func (h Handler) setup(ctx service.Context) (*client.Client, error) {
             }
             builder.WriteString(fmt.Sprintf("%d/%d", progress.Value, progress.Max))
             content := builder.String()
-            _, err := process.Session.InteractionResponseEdit(process.Interaction, &discordgo.WebhookEdit{
+            _, err := process.Session.InteractionResponseEdit(process.InteractionCreate.Interaction, &discordgo.WebhookEdit{
                 Content: &content,
             })
             if err != nil {

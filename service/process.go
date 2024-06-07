@@ -6,8 +6,11 @@ import (
 )
 
 type Process struct {
-    PromptID    string
-    Interaction *discordgo.Interaction
-    Session     *discordgo.Session
-    ComfyClient *client.Client
+    PromptID          string
+    InteractionCreate *discordgo.InteractionCreate
+    Session           *discordgo.Session
+    ComfyClient       *client.Client
+    PositivePrompt    string
+    NegativePrompt    string
+    Seed              uint64
 }

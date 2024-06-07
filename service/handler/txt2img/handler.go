@@ -122,10 +122,13 @@ func (h Handler) HandleCommand(ctx service.Context, s *discordgo.Session, i *dis
 
     go consumeMessages(resp)
     ctx.Bot.AddProcess(resp.PromptID, service.Process{
-        PromptID:    resp.PromptID,
-        Interaction: i.Interaction,
-        Session:     s,
-        ComfyClient: comfyClient,
+        PromptID:          resp.PromptID,
+        InteractionCreate: i,
+        Session:           s,
+        ComfyClient:       comfyClient,
+        PositivePrompt:    positive,
+        NegativePrompt:    negative,
+        Seed:              seed,
     })
 
     builder.WriteString("Queued prompt with ID: " + resp.PromptID + "\n")
@@ -161,7 +164,7 @@ func (h Handler) setup(ctx service.Context) (*client.Client, error) {
             if node == "" {
                 process := ctx.Bot.GetProcessByPromptID(response.PromptID)
                 if process != nil {
-                    _, err := process.Session.FollowupMessageCreate(process.Interaction, true, &discordgo.WebhookParams{
+                    _, err := process.Session.FollowupMessageCreate(process.InteractionCreate.Interaction, true, &discordgo.WebhookParams{
                         Content: "Execution completed for prompt with ID: " + response.PromptID,
                     })
 
@@ -211,12 +214,49 @@ func (h Handler) setup(ctx service.Context) (*client.Client, error) {
                             },
                         },
                     }
+
+                    embed := &discordgo.MessageEmbed{
+                        Image: &discordgo.MessageEmbedImage{
+                            URL: fmt.Sprintf("attachment://%s", files[0].Name),
+                        },
+                        Author: &discordgo.MessageEmbedAuthor{
+                            Name: "discomfort",
+                        },
+                        Footer: &discordgo.MessageEmbedFooter{
+                            Text: "Powered by discomfort",
+                        },
+                        Fields: []*discordgo.MessageEmbedField{
+                            {
+                                Name:  "Prompt",
+                                Value: process.PositivePrompt,
+                            },
+                            {
+                                Name:  "Negative prompt",
+                                Value: process.NegativePrompt,
+                            },
+                            {
+                                Name:  "Seed",
+                                Value: fmt.Sprintf("%d", process.Seed),
+                            },
+                            {
+                                Name:   "User",
+                                Value:  fmt.Sprintf("<@%s>", service.GetDiscordUserId(process.InteractionCreate)),
+                                Inline: true,
+                            },
+                        },
+                    }
+
+                    embeds := make([]*discordgo.MessageEmbed, 0)
+                    embeds = append(embeds, embed)
+
                     process := ctx.Bot.GetProcessByPromptID(response.PromptID)
                     if process != nil {
-                        _, err := process.Session.FollowupMessageCreate(process.Interaction, true, &discordgo.WebhookParams{
-                            Content:    "Image for prompt with ID: " + response.PromptID,
+                        content := "Image for prompt with ID: " + response.PromptID
+                        _, err := process.Session.InteractionResponseEdit(process.InteractionCreate.Interaction, &discordgo.WebhookEdit{
+                            Content:    &content,
+                            Embeds:     &embeds,
                             Files:      files,
-                            Components: components,
+                            Components: &components,
                         })
 
                         if err != nil {
@@ -235,7 +275,7 @@ func (h Handler) setup(ctx service.Context) (*client.Client, error) {
             }
             builder.WriteString(fmt.Sprintf("%d/%d", progress.Value, progress.Max))
             content := builder.String()
-            _, err := process.Session.InteractionResponseEdit(process.Interaction, &discordgo.WebhookEdit{
+            _, err := process.Session.InteractionResponseEdit(process.InteractionCreate.Interaction, &discordgo.WebhookEdit{
                 Content: &content,
             })
             if err != nil {
