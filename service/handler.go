@@ -1,6 +1,8 @@
 package service
 
 import (
+    "discomfort/build"
+    "fmt"
     "github.com/bwmarrin/discordgo"
 )
 
@@ -25,7 +27,7 @@ func EmbedTemplate() *discordgo.MessageEmbed {
             IconURL: "https://github.com/tanis2000/discomfort/blob/master/docs/logo/logo-64.png?raw=true",
         },
         Footer: &discordgo.MessageEmbedFooter{
-            Text:    "Powered by discomfort",
+            Text:    fmt.Sprintf("Powered by discomfort (%s)", build.Version),
             IconURL: "https://github.com/tanis2000/discomfort/blob/master/docs/logo/logo-64.png?raw=true",
         },
     }
