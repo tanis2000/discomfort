@@ -10,7 +10,7 @@ COPY . .
 
 ENV BUILD_VERSION=dev
 ARG BUILD_VERSION=${BUILD_VERSION}
-RUN CGO_ENABLED=0 go build -v -ldflags="-X 'app/build.Version=v${BUILD_VERSION}' -X 'app/build.User=$(id -u -n)' -X 'app/build.Time=$(date)'" -o /discomfort
+RUN CGO_ENABLED=0 go build -v -ldflags="-X 'app/build.Version=${BUILD_VERSION}' -X 'app/build.User=$(id -u -n)' -X 'app/build.Time=$(date)'" -o /discomfort
 
 # Run the tests in the container
 FROM build-stage AS run-test-stage
@@ -26,7 +26,7 @@ WORKDIR /
 COPY --from=build-stage /discomfort /discomfort
 COPY --chmod=777 --from=build-stage /app/deploy/docker/run.sh /run.sh
 COPY --from=build-stage /app/workflows /workflows
-RUN echo "{}" > /images.json
+RUN mkdir /data
 
 EXPOSE 8080
 
