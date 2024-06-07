@@ -8,7 +8,9 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 go build -v -ldflags="-X 'main.Version=v0.1.0' -X 'app/build.User=$(id -u -n)' -X 'app/build.Time=$(date)'" -o /discomfort
+ENV BUILD_VERSION=dev
+ARG BUILD_VERSION=${BUILD_VERSION}
+RUN CGO_ENABLED=0 go build -v -ldflags="-X 'app/build.Version=v${BUILD_VERSION}' -X 'app/build.User=$(id -u -n)' -X 'app/build.Time=$(date)'" -o /discomfort
 
 # Run the tests in the container
 FROM build-stage AS run-test-stage
