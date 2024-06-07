@@ -2,8 +2,10 @@ package service
 
 import (
     "discomfort/internal/build"
+    "discomfort/internal/database"
     "fmt"
     "github.com/bwmarrin/discordgo"
+    "log"
 )
 
 type Handler interface {
@@ -32,4 +34,9 @@ func EmbedTemplate() *discordgo.MessageEmbed {
         },
     }
     return embed
+}
+
+func UpdateDiscordUser(db *database.Database, user *discordgo.User) error {
+    log.Printf("Updating Discord User id:%s username:%s", user.ID, user.Username)
+    return nil
 }

@@ -1,6 +1,8 @@
 package service
 
 import (
+    "discomfort/internal/database"
+    "discomfort/internal/imagedb"
     "errors"
     "github.com/bwmarrin/discordgo"
     "github.com/tanis2000/comfy-client/client"
@@ -12,7 +14,7 @@ type Bot struct {
     token              string
     comfyAddress       string
     comfyPort          int
-    imageDB            *ImageDB
+    imageDB            *imagedb.ImageDB
     processes          map[string]Process
     desiredHandlers    []Handler
     registeredHandlers map[string]Handler
@@ -23,6 +25,7 @@ type Bot struct {
     // existingCommands contains the list of the commands that have been already previously registered with Discord. This is used to remove commands that are no longer available
     existingCommands []*discordgo.ApplicationCommand
     context          Context
+    db               *database.Database
 }
 
 type optionMap = map[string]*discordgo.ApplicationCommandInteractionDataOption
@@ -35,12 +38,12 @@ func parseOptions(options []*discordgo.ApplicationCommandInteractionDataOption) 
     return
 }
 
-func NewBot(token string, comfyAddress string, comfyPort int, desiredHandlers []Handler) *Bot {
+func NewBot(token string, comfyAddress string, comfyPort int, desiredHandlers []Handler, db *database.Database) *Bot {
     res := &Bot{
         token:              token,
         comfyAddress:       comfyAddress,
         comfyPort:          comfyPort,
-        imageDB:            NewImageDB(),
+        imageDB:            imagedb.NewImageDB(),
         processes:          map[string]Process{},
         availableCommands:  make([]*discordgo.ApplicationCommand, 0),
         registeredCommands: make([]*discordgo.ApplicationCommand, 0),
@@ -48,6 +51,7 @@ func NewBot(token string, comfyAddress string, comfyPort int, desiredHandlers []
         desiredHandlers:    desiredHandlers,
         registeredHandlers: make(map[string]Handler),
         context:            Context{},
+        db:                 db,
     }
     res.context.Bot = res
     res.registerHandlers()
@@ -193,4 +197,8 @@ func (b *Bot) AddImage(image string) {
 
 func (b *Bot) SaveImageDB() {
     b.imageDB.Save()
+}
+
+func (b *Bot) GetDatabase() *database.Database {
+    return b.db
 }

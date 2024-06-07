@@ -2,7 +2,8 @@ package cmd
 
 import (
     "discomfort/internal/build"
-    service2 "discomfort/internal/service"
+    "discomfort/internal/database"
+    "discomfort/internal/service"
     "discomfort/internal/service/handler/faceswap"
     "discomfort/internal/service/handler/txt2img"
     "discomfort/internal/service/handler/uploadimage"
@@ -26,14 +27,24 @@ var rootCmd = &cobra.Command{
     Short:   "discomfort is a Discord bot to control ComfyUI",
     Long:    `Your Discord bot for ComfyUI management`,
     Run: func(cmd *cobra.Command, args []string) {
-        var desiredHandlers = []service2.Handler{
+        db := database.NewDatabase()
+        err := db.Open()
+        if err != nil {
+            log.Fatal(err.Error())
+        }
+        err = db.Setup()
+        if err != nil {
+            log.Fatal(err.Error())
+        }
+
+        var desiredHandlers = []service.Handler{
             txt2img.Handler{},
             faceswap.Handler{},
             uploadimage.Handler{},
             uploadlist.Handler{},
         }
-        bot := service2.NewBot(discordToken, comfyAddress, comfyPort, desiredHandlers)
-        err := bot.Start()
+        bot := service.NewBot(discordToken, comfyAddress, comfyPort, desiredHandlers, db)
+        err = bot.Start()
         if err != nil {
             log.Fatal(err.Error())
         }
@@ -43,6 +54,10 @@ var rootCmd = &cobra.Command{
         <-sc
         log.Println("Gracefully shutting down.")
         err = bot.Stop()
+        if err != nil {
+            log.Fatal(err.Error())
+        }
+        err = db.Close()
         if err != nil {
             log.Fatal(err.Error())
         }
