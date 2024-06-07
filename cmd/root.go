@@ -1,6 +1,7 @@
 package cmd
 
 import (
+    "discomfort/build"
     "discomfort/service"
     "discomfort/service/handler/faceswap"
     "discomfort/service/handler/txt2img"
@@ -20,9 +21,10 @@ var comfyAddress string
 var comfyPort int
 
 var rootCmd = &cobra.Command{
-    Use:   "discomfort",
-    Short: "discomfort is a Discord bot to control ComfyUI",
-    Long:  `Your Discord bot for ComfyUI management`,
+    Version: build.CompleteVersion(),
+    Use:     "discomfort",
+    Short:   "discomfort is a Discord bot to control ComfyUI",
+    Long:    `Your Discord bot for ComfyUI management`,
     Run: func(cmd *cobra.Command, args []string) {
         var desiredHandlers = []service.Handler{
             txt2img.Handler{},
