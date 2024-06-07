@@ -1,7 +1,7 @@
 package service
 
 import (
-    "discomfort/build"
+    "discomfort/internal/build"
     "fmt"
     "github.com/bwmarrin/discordgo"
 )

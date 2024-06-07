@@ -2,7 +2,7 @@ package uploadimage
 
 import (
     "bytes"
-    "discomfort/service"
+    "discomfort/internal/service"
     "fmt"
     "github.com/bwmarrin/discordgo"
     "github.com/tanis2000/comfy-client/client"

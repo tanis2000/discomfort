@@ -1,7 +1,7 @@
 package uploadlist
 
 import (
-    "discomfort/service"
+    "discomfort/internal/service"
     "github.com/bwmarrin/discordgo"
     "log"
     "strings"

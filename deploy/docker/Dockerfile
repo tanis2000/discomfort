@@ -10,7 +10,7 @@ COPY . .
 
 ENV BUILD_VERSION=dev
 ARG BUILD_VERSION=${BUILD_VERSION}
-RUN CGO_ENABLED=0 go build -v -ldflags="-X 'app/build.Version=${BUILD_VERSION}' -X 'app/build.User=$(id -u -n)' -X 'app/build.Time=$(date)'" -o /discomfort
+RUN CGO_ENABLED=0 go build -v -ldflags="-X 'discomfort/internal/build.Version=${BUILD_VERSION}' -X 'discomfort/internal/build.User=$(id -u -n)' -X 'discomfort/internal/build.Time=$(date)'" -o /discomfort
 
 # Run the tests in the container
 FROM build-stage AS run-test-stage

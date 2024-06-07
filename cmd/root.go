@@ -1,12 +1,12 @@
 package cmd
 
 import (
-    "discomfort/build"
-    "discomfort/service"
-    "discomfort/service/handler/faceswap"
-    "discomfort/service/handler/txt2img"
-    "discomfort/service/handler/uploadimage"
-    "discomfort/service/handler/uploadlist"
+    "discomfort/internal/build"
+    service2 "discomfort/internal/service"
+    "discomfort/internal/service/handler/faceswap"
+    "discomfort/internal/service/handler/txt2img"
+    "discomfort/internal/service/handler/uploadimage"
+    "discomfort/internal/service/handler/uploadlist"
     "fmt"
     "github.com/spf13/cobra"
     "github.com/spf13/viper"
@@ -26,13 +26,13 @@ var rootCmd = &cobra.Command{
     Short:   "discomfort is a Discord bot to control ComfyUI",
     Long:    `Your Discord bot for ComfyUI management`,
     Run: func(cmd *cobra.Command, args []string) {
-        var desiredHandlers = []service.Handler{
+        var desiredHandlers = []service2.Handler{
             txt2img.Handler{},
             faceswap.Handler{},
             uploadimage.Handler{},
             uploadlist.Handler{},
         }
-        bot := service.NewBot(discordToken, comfyAddress, comfyPort, desiredHandlers)
+        bot := service2.NewBot(discordToken, comfyAddress, comfyPort, desiredHandlers)
         err := bot.Start()
         if err != nil {
             log.Fatal(err.Error())
