@@ -6,10 +6,10 @@ require (
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.19.0
-	github.com/tanis2000/comfy-client v0.0.0
+	github.com/tanis2000/comfy-client v0.1.0
 )
 
-replace github.com/tanis2000/comfy-client v0.0.0 => ../comfy-client
+//replace github.com/tanis2000/comfy-client v0.0.0 => ../comfy-client
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect

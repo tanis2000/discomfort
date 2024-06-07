@@ -1,19 +1,28 @@
 package service
 
 import (
+    "errors"
     "github.com/bwmarrin/discordgo"
     "github.com/tanis2000/comfy-client/client"
     "log"
-    "strings"
 )
 
 type Bot struct {
-    session      *discordgo.Session
-    token        string
-    comfyAddress string
-    comfyPort    int
-    imageDB      *ImageDB
-    processes    map[string]Process
+    session            *discordgo.Session
+    token              string
+    comfyAddress       string
+    comfyPort          int
+    imageDB            *ImageDB
+    processes          map[string]Process
+    desiredHandlers    []Handler
+    registeredHandlers map[string]Handler
+    // availableCommands contains the list of commands that the bot wants to register
+    availableCommands []*discordgo.ApplicationCommand
+    // registeredCommands contains the list of the commands that the bot has successfully registered with Discord
+    registeredCommands []*discordgo.ApplicationCommand
+    // existingCommands contains the list of the commands that have been already previously registered with Discord. This is used to remove commands that are no longer available
+    existingCommands []*discordgo.ApplicationCommand
+    context          Context
 }
 
 type optionMap = map[string]*discordgo.ApplicationCommandInteractionDataOption
@@ -26,123 +35,51 @@ func parseOptions(options []*discordgo.ApplicationCommandInteractionDataOption) 
     return
 }
 
-func NewBot(token string, comfyAddress string, comfyPort int) *Bot {
+func NewBot(token string, comfyAddress string, comfyPort int, desiredHandlers []Handler) *Bot {
     res := &Bot{
-        token:        token,
-        comfyAddress: comfyAddress,
-        comfyPort:    comfyPort,
-        imageDB:      NewImageDB(),
-        processes:    map[string]Process{},
+        token:              token,
+        comfyAddress:       comfyAddress,
+        comfyPort:          comfyPort,
+        imageDB:            NewImageDB(),
+        processes:          map[string]Process{},
+        availableCommands:  make([]*discordgo.ApplicationCommand, 0),
+        registeredCommands: make([]*discordgo.ApplicationCommand, 0),
+        existingCommands:   make([]*discordgo.ApplicationCommand, 0),
+        desiredHandlers:    desiredHandlers,
+        registeredHandlers: make(map[string]Handler),
+        context:            Context{},
     }
+    res.context.Bot = res
+    res.registerHandlers()
+    res.addAvailableCommands()
     res.imageDB.Load()
     return res
 }
 
-func interactionAuthor(i *discordgo.Interaction) *discordgo.User {
-    if i.Member != nil {
-        return i.Member.User
-    }
-    return i.User
-}
-
-func (b *Bot) handleUploadList(s *discordgo.Session, i *discordgo.InteractionCreate, opts optionMap) {
-    builder := new(strings.Builder)
-    builder.WriteString("Available images: \n")
-    for _, v := range b.imageDB.Images {
-        builder.WriteString(v + "\n")
-    }
-
-    err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-        Type: discordgo.InteractionResponseChannelMessageWithSource,
-        Data: &discordgo.InteractionResponseData{
-            Content: builder.String(),
-        },
-    })
-
-    if err != nil {
-        log.Panicf("could not respond to interaction: %s", err)
+func (b *Bot) registerHandlers() {
+    for _, h := range b.desiredHandlers {
+        if err := b.registerHandler(h); err != nil {
+            log.Fatalf("Failed to register handler '%s': %v", h.GetName(), err)
+        }
     }
 }
 
-func consumeMessages(resp *client.QueuePromptResponse) {
-    for
-    {
-        <-resp.Messages
+func (b *Bot) registerHandler(handler Handler) error {
+    if handler == nil {
+        return errors.New("cannot register nil handler")
     }
+    log.Printf("Registering handler '%s'", handler.GetName())
+    if _, ok := b.registeredHandlers[handler.GetName()]; ok {
+        log.Panicf("Handler '%s' already registered", handler.GetName())
+    }
+    b.registeredHandlers[handler.GetName()] = handler
+    return nil
 }
 
-var commands = []*discordgo.ApplicationCommand{
-    {
-        Name:        "uploadlist",
-        Description: "List the images available",
-    },
-    {
-        Name:        "uploadimage",
-        Description: "Say something through a bot",
-        Options: []*discordgo.ApplicationCommandOption{
-            {
-                Name:        "image",
-                Description: "Image to upload",
-                Type:        discordgo.ApplicationCommandOptionAttachment,
-                Required:    true,
-            },
-        },
-    },
-    {
-        Name:        "txt2img",
-        Description: "Generate an image from text",
-        Options: []*discordgo.ApplicationCommandOption{
-            {
-                Name:        "positive",
-                Description: "Positive prompt",
-                Type:        discordgo.ApplicationCommandOptionString,
-                Required:    true,
-            },
-            {
-                Name:        "negative",
-                Description: "Positive prompt",
-                Type:        discordgo.ApplicationCommandOptionString,
-                Required:    true,
-            },
-            {
-                Name:        "seed",
-                Description: "Seed",
-                Type:        discordgo.ApplicationCommandOptionInteger,
-                Required:    false,
-            },
-        },
-    },
-    {
-        Name:        "faceswap",
-        Description: "Generate an image from text",
-        Options: []*discordgo.ApplicationCommandOption{
-            {
-                Name:        "positive",
-                Description: "Positive prompt",
-                Type:        discordgo.ApplicationCommandOptionString,
-                Required:    true,
-            },
-            {
-                Name:        "negative",
-                Description: "Positive prompt",
-                Type:        discordgo.ApplicationCommandOptionString,
-                Required:    true,
-            },
-            {
-                Name:         "image",
-                Description:  "Face image",
-                Type:         discordgo.ApplicationCommandOptionString,
-                Required:     true,
-                Autocomplete: true,
-            },
-            {
-                Name:        "seed",
-                Description: "Seed",
-                Type:        discordgo.ApplicationCommandOptionInteger,
-                Required:    false,
-            },
-        },
-    },
+func (b *Bot) addAvailableCommands() {
+    for _, h := range b.registeredHandlers {
+        b.availableCommands = append(b.availableCommands, h.GetApplicationCommand())
+    }
 }
 
 func (bot *Bot) Start() error {
@@ -164,15 +101,18 @@ func (bot *Bot) Start() error {
         case discordgo.InteractionApplicationCommand:
             data := m.ApplicationCommandData()
 
-            switch data.Name {
-            case "uploadlist":
-                bot.handleUploadList(c, m, parseOptions(data.Options))
-            case "uploadimage":
-                bot.handleUploadImage(c, m, parseOptions(data.Options))
-            case "txt2img":
-                bot.handleTxt2Img(c, m, parseOptions(data.Options))
-            case "faceswap":
-                bot.handleFaceSwap(c, m, parseOptions(data.Options))
+            for _, h := range bot.registeredHandlers {
+                if h.GetName() == data.Name {
+                    h.HandleCommand(bot.context, c, m, parseOptions(data.Options))
+                }
+            }
+        case discordgo.InteractionApplicationCommandAutocomplete:
+            data := m.ApplicationCommandData()
+
+            for _, h := range bot.registeredHandlers {
+                if h.GetName() == data.Name {
+                    h.HandleCommand(bot.context, c, m, parseOptions(data.Options))
+                }
             }
         case discordgo.InteractionMessageComponent:
             data := m.MessageComponentData()
@@ -190,15 +130,15 @@ func (bot *Bot) Start() error {
         return err
     }
 
-    log.Println("Adding commands...")
-    registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
-    for i, v := range commands {
+    log.Println("Registering commands with Discord...")
+    bot.registeredCommands = make([]*discordgo.ApplicationCommand, len(bot.availableCommands))
+    for _, v := range bot.availableCommands {
         log.Println("Registering command " + v.Name)
         cmd, err := bot.session.ApplicationCommandCreate(bot.session.State.User.ID, "", v)
         if err != nil {
             log.Panicf("Cannot create '%v' command: %v", v.Name, err)
         }
-        registeredCommands[i] = cmd
+        bot.registeredCommands = append(bot.registeredCommands, cmd)
     }
 
     return nil
@@ -220,4 +160,37 @@ func (bot *Bot) GetProcessFromComfyClient(comfyClient *client.Client) *Process {
         }
     }
     return nil
+}
+
+func (bot *Bot) GetProcessByPromptID(promptID string) *Process {
+    for _, process := range bot.processes {
+        if process.PromptID == promptID {
+            return &process
+        }
+    }
+    return nil
+}
+
+func (bot *Bot) GetComfyAddress() string {
+    return bot.comfyAddress
+}
+
+func (bot *Bot) GetComfyPort() int {
+    return bot.comfyPort
+}
+
+func (b *Bot) AddProcess(promptID string, process Process) {
+    b.processes[promptID] = process
+}
+
+func (bot *Bot) GetImages() []string {
+    return bot.imageDB.Images
+}
+
+func (b *Bot) AddImage(image string) {
+    b.imageDB.Add(image)
+}
+
+func (b *Bot) SaveImageDB() {
+    b.imageDB.Save()
 }
