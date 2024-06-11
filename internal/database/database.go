@@ -49,7 +49,7 @@ func (d *Database) Setup() error {
 
     _, err = d.db.ExecContext(context.TODO(), `
     CREATE TABLE IF NOT EXISTS users (
-        id int PRIMARY KEY
+        id text PRIMARY KEY
     );
     `)
     if err != nil {
@@ -59,7 +59,7 @@ func (d *Database) Setup() error {
     _, err = d.db.ExecContext(context.TODO(), `
     CREATE TABLE IF NOT EXISTS images (
         id TEXT PRIMARY KEY,
-        user_id int,
+        user_id TEXT,
         is_public bool DEFAULT false,
         filename TEXT DEFAULT '',
         friendly_name TEXT DEFAULT '',
@@ -82,7 +82,7 @@ func (d *Database) Setup() error {
     return nil
 }
 
-func (d *Database) FindUerById(id int) (User, error) {
+func (d *Database) FindUerById(id string) (User, error) {
     res := d.db.QueryRow("SELECT * FROM users WHERE id = ?", id)
     var u User
     if err := res.Scan(&u.ID); err != nil {
@@ -142,6 +142,23 @@ func (d *Database) FindImagesBySearchTerm(term string) ([]Image, error) {
     return res, nil
 }
 
+func (d *Database) FindImagesByUserId(userId string, isPublic bool) ([]Image, error) {
+    res := make([]Image, 0)
+    rows, err := d.db.Query("SELECT id, user_id, filename, friendly_name, is_public FROM images WHERE user_id = ? OR is_public = ? ORDER BY filename", userId, isPublic)
+    if err != nil {
+        return res, err
+    }
+    defer rows.Close()
+    for rows.Next() {
+        var i Image
+        if err := rows.Scan(&i.ID, &i.UserID, &i.Filename, &i.FriendlyName, &i.IsPublic); err != nil {
+            return res, err
+        }
+        res = append(res, i)
+    }
+    return res, nil
+}
+
 func (d *Database) getSettings() (*Setting, error) {
     res := d.db.QueryRow("SELECT id, version, migrated_from_imagedb FROM settings LIMIT 1")
     var s Setting
@@ -189,10 +206,10 @@ func (d *Database) setupSettings() error {
         }
     }
 
-    _, err = d.FindUerById(1)
+    _, err = d.FindUerById("1")
     if err != nil {
         // Create a service user to use for orphan images and stuff like that
-        u := &User{ID: 1}
+        u := &User{ID: "1"}
         _, err = d.AddUser(u)
         if err != nil {
             return err
@@ -209,7 +226,7 @@ func (d *Database) migrateFromImageDB() error {
     if s.MigratedFromImageDB {
         return nil
     }
-    u, err := d.FindUerById(1)
+    u, err := d.FindUerById("1")
     if err != nil {
         return err
     }

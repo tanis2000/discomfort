@@ -72,7 +72,7 @@ func (h Handler) HandleCommand(ctx service.Context, s *discordgo.Session, i *dis
         data := i.ApplicationCommandData()
         log.Printf("%v", data)
 
-        service.UpdateDiscordUser(ctx.Bot.GetDatabase(), i.User)
+        service.UpdateDiscordUser(ctx.Bot.GetDatabase(), service.GetDiscordUserId(i))
         builder := new(strings.Builder)
 
         positive := opts["positive"].Value.(string)
@@ -158,21 +158,26 @@ func (h Handler) HandleCommand(ctx service.Context, s *discordgo.Session, i *dis
         }
 
     case discordgo.InteractionApplicationCommandAutocomplete:
+        userId := service.GetDiscordUserId(i)
         choices := make([]*discordgo.ApplicationCommandOptionChoice, 0)
-        for _, image := range ctx.Bot.GetImages() {
+        images, err := ctx.Bot.GetDatabase().FindImagesByUserId(userId, true)
+        if err != nil {
+            log.Printf("Cannot get images: %s", err)
+        }
+        for _, image := range images {
             choice := &discordgo.ApplicationCommandOptionChoice{
-                Name:  image,
-                Value: image,
+                Name:  image.Filename,
+                Value: image.Filename,
             }
             if opts["image"].StringValue() != "" {
-                if strings.Contains(image, opts["image"].StringValue()) {
+                if strings.Contains(image.Filename, opts["image"].StringValue()) {
                     choices = append(choices, choice)
                 }
             } else {
                 choices = append(choices, choice)
             }
         }
-        err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+        err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
             Type: discordgo.InteractionApplicationCommandAutocompleteResult,
             Data: &discordgo.InteractionResponseData{
                 Choices: choices,

@@ -4,7 +4,7 @@ import "github.com/google/uuid"
 
 type Image struct {
     ID           string
-    UserID       int
+    UserID       string
     IsPublic     bool
     Filename     string
     FriendlyName string

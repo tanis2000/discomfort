@@ -36,7 +36,7 @@ func EmbedTemplate() *discordgo.MessageEmbed {
     return embed
 }
 
-func UpdateDiscordUser(db *database.Database, user *discordgo.User) error {
-    log.Printf("Updating Discord User id:%s username:%s", user.ID, user.Username)
+func UpdateDiscordUser(db *database.Database, userID string) error {
+    log.Printf("Updating Discord User id:%s", userID)
     return nil
 }
