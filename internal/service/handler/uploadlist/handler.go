@@ -21,13 +21,33 @@ func (h Handler) GetApplicationCommand() *discordgo.ApplicationCommand {
     }
 }
 func (h Handler) HandleCommand(ctx service.Context, s *discordgo.Session, i *discordgo.InteractionCreate, opts map[string]*discordgo.ApplicationCommandInteractionDataOption) {
+    userId := service.GetDiscordUserId(i)
     builder := new(strings.Builder)
+    images, err := ctx.Bot.GetDatabase().FindImagesByUserId(userId, true)
+    if err != nil {
+        log.Printf("cannot load images for user %s: %s", userId, err.Error())
+        builder.WriteString("Cannot retrieve the list of images")
+        err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+            Type: discordgo.InteractionResponseChannelMessageWithSource,
+            Data: &discordgo.InteractionResponseData{
+                Content: builder.String(),
+            },
+        })
+        if err != nil {
+            log.Printf("could not respond to interaction: %s", err)
+        }
+        return
+    }
     builder.WriteString("Available images: \n")
-    for _, v := range ctx.Bot.GetImages() {
-        builder.WriteString(v + "\n")
+    for _, v := range images {
+        builder.WriteString(v.Filename)
+        if v.FriendlyName != "" {
+            builder.WriteString(" (" + v.FriendlyName + ")")
+        }
+        builder.WriteString("\n")
     }
 
-    err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+    err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
         Type: discordgo.InteractionResponseChannelMessageWithSource,
         Data: &discordgo.InteractionResponseData{
             Content: builder.String(),
@@ -35,6 +55,6 @@ func (h Handler) HandleCommand(ctx service.Context, s *discordgo.Session, i *dis
     })
 
     if err != nil {
-        log.Panicf("could not respond to interaction: %s", err)
+        log.Printf("could not respond to interaction: %s", err)
     }
 }

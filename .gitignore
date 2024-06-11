@@ -102,3 +102,8 @@ go.work.sum
 
 # env file
 .env
+
+
+
+# Project specific
+data/

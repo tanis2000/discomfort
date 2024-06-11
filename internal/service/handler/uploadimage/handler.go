@@ -2,6 +2,7 @@ package uploadimage
 
 import (
     "bytes"
+    "discomfort/internal/database"
     "discomfort/internal/service"
     "fmt"
     "github.com/bwmarrin/discordgo"
@@ -22,7 +23,7 @@ func (h Handler) GetName() string {
 func (h Handler) GetApplicationCommand() *discordgo.ApplicationCommand {
     return &discordgo.ApplicationCommand{
         Name:        "uploadimage",
-        Description: "Say something through a bot",
+        Description: "Upload an image to the server",
         Options: []*discordgo.ApplicationCommandOption{
             {
                 Name:        "image",
@@ -30,11 +31,33 @@ func (h Handler) GetApplicationCommand() *discordgo.ApplicationCommand {
                 Type:        discordgo.ApplicationCommandOptionAttachment,
                 Required:    true,
             },
+            {
+                Name:        "friendly_name",
+                Description: "A friendly name for this image that you can use when you want to refer to it",
+                Type:        discordgo.ApplicationCommandOptionString,
+                Required:    false,
+            },
+            {
+                Name:        "is_public",
+                Description: "Is this image public?",
+                Type:        discordgo.ApplicationCommandOptionBoolean,
+                Required:    false,
+            },
         },
     }
 }
 
 func (h Handler) HandleCommand(ctx service.Context, s *discordgo.Session, i *discordgo.InteractionCreate, opts map[string]*discordgo.ApplicationCommandInteractionDataOption) {
+    userId := service.GetDiscordUserId(i)
+    user, err := ctx.Bot.GetDatabase().FindUerById(userId)
+    if err != nil {
+        user = database.User{ID: userId}
+        _, err = ctx.Bot.GetDatabase().AddUser(&user)
+        if err != nil {
+            log.Printf("Cannot retrieve or add the user: %s", err)
+            return
+        }
+    }
     comfyClient, err := h.setup(ctx)
     if err != nil {
         log.Printf("Cannot initialize the ComfyUI client: %s", err)
@@ -57,8 +80,23 @@ func (h Handler) HandleCommand(ctx service.Context, s *discordgo.Session, i *dis
         log.Panicf("could not upload image: %s", err)
     }
 
-    ctx.Bot.AddImage(upload)
-    ctx.Bot.SaveImageDB()
+    friendlyName := upload
+    if val, ok := opts["friendly_name"]; ok {
+        friendlyName = val.StringValue()
+    }
+
+    isPublic := false
+    if val, ok := opts["is_public"]; ok {
+        isPublic = val.BoolValue()
+    }
+
+    dbImg := database.NewImage(&user, upload, friendlyName, isPublic)
+
+    _, err = ctx.Bot.GetDatabase().AddImage(dbImg)
+    if err != nil {
+        log.Printf("cannot add image to database: %s", err)
+        return
+    }
 
     builder := new(strings.Builder)
     builder.WriteString(upload + " uploaded.")

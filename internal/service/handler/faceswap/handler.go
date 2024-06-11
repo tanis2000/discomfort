@@ -2,7 +2,7 @@ package faceswap
 
 import (
     "bytes"
-    service2 "discomfort/internal/service"
+    "discomfort/internal/service"
     "fmt"
     "github.com/bwmarrin/discordgo"
     "github.com/tanis2000/comfy-client/client"
@@ -54,7 +54,7 @@ func (h Handler) GetApplicationCommand() *discordgo.ApplicationCommand {
     }
 }
 
-func (h Handler) HandleCommand(ctx service2.Context, s *discordgo.Session, i *discordgo.InteractionCreate, opts map[string]*discordgo.ApplicationCommandInteractionDataOption) {
+func (h Handler) HandleCommand(ctx service.Context, s *discordgo.Session, i *discordgo.InteractionCreate, opts map[string]*discordgo.ApplicationCommandInteractionDataOption) {
     comfyClient, err := h.setup(ctx)
     if err != nil {
         log.Printf("Cannot initialize the ComfyUI client: %s", err)
@@ -71,6 +71,8 @@ func (h Handler) HandleCommand(ctx service2.Context, s *discordgo.Session, i *di
     case discordgo.InteractionApplicationCommand:
         data := i.ApplicationCommandData()
         log.Printf("%v", data)
+
+        service.UpdateDiscordUser(ctx.Bot.GetDatabase(), service.GetDiscordUserId(i))
         builder := new(strings.Builder)
 
         positive := opts["positive"].Value.(string)
@@ -128,7 +130,7 @@ func (h Handler) HandleCommand(ctx service2.Context, s *discordgo.Session, i *di
         }
 
         go consumeMessages(resp)
-        ctx.Bot.AddProcess(resp.PromptID, service2.Process{
+        ctx.Bot.AddProcess(resp.PromptID, service.Process{
             PromptID:          resp.PromptID,
             InteractionCreate: i,
             Session:           s,
@@ -156,21 +158,26 @@ func (h Handler) HandleCommand(ctx service2.Context, s *discordgo.Session, i *di
         }
 
     case discordgo.InteractionApplicationCommandAutocomplete:
+        userId := service.GetDiscordUserId(i)
         choices := make([]*discordgo.ApplicationCommandOptionChoice, 0)
-        for _, image := range ctx.Bot.GetImages() {
+        images, err := ctx.Bot.GetDatabase().FindImagesByUserId(userId, true)
+        if err != nil {
+            log.Printf("Cannot get images: %s", err)
+        }
+        for _, image := range images {
             choice := &discordgo.ApplicationCommandOptionChoice{
-                Name:  image,
-                Value: image,
+                Name:  image.Filename,
+                Value: image.Filename,
             }
             if opts["image"].StringValue() != "" {
-                if strings.Contains(image, opts["image"].StringValue()) {
+                if strings.Contains(image.Filename, opts["image"].StringValue()) {
                     choices = append(choices, choice)
                 }
             } else {
                 choices = append(choices, choice)
             }
         }
-        err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+        err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
             Type: discordgo.InteractionApplicationCommandAutocompleteResult,
             Data: &discordgo.InteractionResponseData{
                 Choices: choices,
@@ -182,7 +189,7 @@ func (h Handler) HandleCommand(ctx service2.Context, s *discordgo.Session, i *di
     }
 }
 
-func (h Handler) setup(ctx service2.Context) (*client.Client, error) {
+func (h Handler) setup(ctx service.Context) (*client.Client, error) {
     callbacks := &client.Callbacks{
         OnStatus: func(c *client.Client, queuedCount int) {
             log.Printf("Queue size: %d", queuedCount)
@@ -233,7 +240,7 @@ func (h Handler) setup(ctx service2.Context) (*client.Client, error) {
                         Reader:      bytes.NewReader(buf),
                     }
                     files = append(files, file)
-                    embed := service2.EmbedTemplate()
+                    embed := service.EmbedTemplate()
                     embed.Image = &discordgo.MessageEmbedImage{
                         URL: fmt.Sprintf("attachment://%s", files[0].Name),
                     }
@@ -252,7 +259,7 @@ func (h Handler) setup(ctx service2.Context) (*client.Client, error) {
                         },
                         {
                             Name:   "User",
-                            Value:  fmt.Sprintf("<@%s>", service2.GetDiscordUserId(process.InteractionCreate)),
+                            Value:  fmt.Sprintf("<@%s>", service.GetDiscordUserId(process.InteractionCreate)),
                             Inline: true,
                         },
                     }
