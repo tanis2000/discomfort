@@ -23,14 +23,14 @@ jobs:
     - name: Setup Build and Development Version
       run: |
         echo "BUILD_VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
-        echo "RELEASE_NAME=discomfort-${{ github.ref_name }}-macos" >> $GITHUB_ENV
+        echo "RELEASE_NAME=discomfort-${{ github.ref_name }}-windows" >> $GITHUB_ENV
       shell: bash
       if: github.event_name == 'push'
 
     - name: Setup Build and Release Version
       run: |
         echo "BUILD_VERSION=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
-        echo "RELEASE_NAME=discomfort-${{ github.event.release.tag_name }}-macos" >> $GITHUB_ENV
+        echo "RELEASE_NAME=discomfort-${{ github.event.release.tag_name }}-windows" >> $GITHUB_ENV
       shell: bash
       if: github.event_name == 'release' && github.event.action == 'published'
 
@@ -65,5 +65,5 @@ jobs:
     - name: Upload artefact to release
       uses: softprops/action-gh-release@v2
       with:
-        files: ${{github.workspace}}/build/${{ env.RELEASE_NAME }}.tar.gz
+        files: ${{github.workspace}}/build/${{ env.RELEASE_NAME }}.zip
       if: github.event_name == 'release' && github.event.action == 'published'
