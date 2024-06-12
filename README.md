@@ -8,14 +8,33 @@ The main aim of Discomfort is to provide an easy-to-use interface for ComfyUI ov
 
 # Supported commands
 
-**/txt2img** to create images based on text
+* **/txt2img** to create images based on text
 
-**/faceswap** to apply a face to a generated image
+* **/faceswap** to apply a face to a generated image
 
-**/uploadimage** to upload an image that can be used in /faceswap
+* **/uploadimage** to upload an image that can be used in /faceswap
 
-**/uploadlist** to obtain the list of all the uploaded images
+* **/uploadlist** to obtain the list of all the uploaded images
 
 # Docker images
 
 Docker images for x64 and arm64 Linux are available on [Docker Hub](https://hub.docker.com/r/tanis2000/discomfort)
+
+# How to run locally
+
+Download the latest binary for your OS from the [Releases](https://github.com/tanis2000/discomfort/releases) page.
+
+Unzip and run the bot with the following command:
+
+```shell
+discomfort --token <your discord bot token goes here> --address 127.0.0.1 --port 8818
+```
+
+The supported parameters are the following:
+
+| Parameter | Description                                                                                                                 |
+|-----------|-----------------------------------------------------------------------------------------------------------------------------|
+| --token   | The Discord bot token that can be obtained from the [Discord Developer Portal](https://discord.com/developers/applications) |
+| --address | The IP address or hostname of the ComfyUI server                                                                            | 
+| --port    | The port number of the ComfyUI server                                                                                       |
+
