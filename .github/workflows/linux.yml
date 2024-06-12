@@ -1,7 +1,4 @@
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
-
-name: Go
+name: linux
 
 on:
   push:
@@ -23,8 +20,46 @@ jobs:
       with:
         go-version: '1.20'
 
+    - name: Setup Release Version
+      run: |
+        echo "BUILD_VERSION=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+        echo "RELEASE_NAME=discomfort-${{ github.event.release.tag_name }}-linux" >> $GITHUB_ENV
+        echo "IMAGE_VERSION=${BUILD_VERSION#v}" >> $GITHUB_ENV
+      shell: bash
+      if: github.event_name == 'release' && github.event.action == 'published'
+
+    - name: Setup Environment
+      run: |
+        mkdir ${{github.workspace}}/build
+        cd ${{github.workspace}}/build
+        mkdir ${{ env.RELEASE_NAME }}
+        cd ../..
+
     - name: Build
-      run: go build -v ./...
+      run: CGO_ENABLED=1 go build -v -ldflags="-X 'discomfort/internal/build.Version=${BUILD_VERSION}' -X 'discomfort/internal/build.User=$(id -u -n)' -X 'discomfort/internal/build.Time=$(date)'" -o ${{github.workspace}}/build/discomfort
 
     - name: Test
       run: go test -v ./...
+
+    - name: Generate artefacts
+      run: |
+        cp -Rpv ${{github.workspace}}/build/discomfort ${{github.workspace}}/build/${{ env.RELEASE_NAME }}
+        cd build
+        tar -czvf ${{ env.RELEASE_NAME }}.tar.gz ${{ env.RELEASE_NAME }}
+
+    - name: Upload artefacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.RELEASE_NAME }}.tar.gz
+        path: ${{github.workspace}}/build/${{ env.RELEASE_NAME }}.tar.gz
+
+    - name: Upload artefact to release
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ${{github.workspace}}/build/${{ env.RELEASE_NAME }}.tar.gz
+        asset_name: ${{ env.RELEASE_NAME }}.tar.gz
+        asset_content_type: application/gzip
+      if: github.event_name == 'release' && github.event.action == 'published'
