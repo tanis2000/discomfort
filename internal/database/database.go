@@ -5,7 +5,6 @@ import (
     "database/sql"
     "discomfort/internal/imagedb"
 )
-import _ "github.com/chaisql/chai/driver"
 import _ "github.com/mattn/go-sqlite3"
 
 type Database struct {
