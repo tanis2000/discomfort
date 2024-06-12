@@ -38,7 +38,7 @@ jobs:
         run: |
           echo "BUILD_VERSION=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
           echo "RELEASE_NAME=discomfort-${{ github.event.release.tag_name }}-linux" >> $GITHUB_ENV
-          echo "IMAGE_VERSION=${${{ github.event.release.tag_name }}#v}" >> $GITHUB_ENV
+          echo "IMAGE_VERSION=${BUILD_VERSION#v}" >> $GITHUB_ENV
         shell: bash
         if: github.event_name == 'release' && github.event.action == 'published'
 
