@@ -2,6 +2,10 @@
 
 <div align="center"><img src="docs/logo/logo-64.png"  alt="Discomfort logo"/></div>
 
+[![Windows](https://github.com/tanis2000/discomfort/actions/workflows/windows.yml/badge.svg)](https://github.com/tanis2000/discomfort/actions/workflows/windows.yml)
+[![macOS](https://github.com/tanis2000/discomfort/actions/workflows/macos.yml/badge.svg)](https://github.com/tanis2000/discomfort/actions/workflows/macos.yml)
+[![Linux](https://github.com/tanis2000/discomfort/actions/workflows/linux.yml/badge.svg)](https://github.com/tanis2000/discomfort/actions/workflows/linux.yml)
+
 Discomfort is in an early development stage. Please feel free to play around with it and to contribute back.
 
 The main aim of Discomfort is to provide an easy-to-use interface for ComfyUI over Discord. 

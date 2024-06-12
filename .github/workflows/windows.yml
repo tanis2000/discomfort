@@ -1,4 +1,4 @@
-name: linux
+name: windows
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
 jobs:
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
 
@@ -23,14 +23,14 @@ jobs:
     - name: Setup Build and Development Version
       run: |
         echo "BUILD_VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
-        echo "RELEASE_NAME=discomfort-${{ github.ref_name }}-linux" >> $GITHUB_ENV
+        echo "RELEASE_NAME=discomfort-${{ github.ref_name }}-macos" >> $GITHUB_ENV
       shell: bash
       if: github.event_name == 'push'
 
     - name: Setup Build and Release Version
       run: |
         echo "BUILD_VERSION=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
-        echo "RELEASE_NAME=discomfort-${{ github.event.release.tag_name }}-linux" >> $GITHUB_ENV
+        echo "RELEASE_NAME=discomfort-${{ github.event.release.tag_name }}-macos" >> $GITHUB_ENV
       shell: bash
       if: github.event_name == 'release' && github.event.action == 'published'
 
@@ -42,22 +42,25 @@ jobs:
         cd ../..
 
     - name: Build
-      run: CGO_ENABLED=1 go build -v -ldflags="-X 'discomfort/internal/build.Version=${BUILD_VERSION}' -X 'discomfort/internal/build.User=$(id -u -n)' -X 'discomfort/internal/build.Time=$(date)'" -o ${{github.workspace}}/build/discomfort
+      run: |
+        go env -w CGO_ENABLED=1
+        go build -v -ldflags="-X 'discomfort/internal/build.Version=${BUILD_VERSION}' -X 'discomfort/internal/build.User=$(id -u -n)' -X 'discomfort/internal/build.Time=$(date)'" -o ${{github.workspace}}/build/discomfort
 
     - name: Test
       run: go test -v ./...
 
     - name: Generate artefacts
+      shell: cmd
       run: |
-        cp -Rpv ${{github.workspace}}/build/discomfort ${{github.workspace}}/build/${{ env.RELEASE_NAME }}
+        copy /Y ${{github.workspace}}\build\discomfort ${{github.workspace}}\build\${{ env.RELEASE_NAME }}
         cd build
-        tar -czvf ${{ env.RELEASE_NAME }}.tar.gz ${{ env.RELEASE_NAME }}
+        7z a ${{ env.RELEASE_NAME }}.zip ${{ env.RELEASE_NAME }}
 
     - name: Upload artefacts
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.RELEASE_NAME }}.tar.gz
-        path: ${{github.workspace}}/build/${{ env.RELEASE_NAME }}.tar.gz
+        name: ${{ env.RELEASE_NAME }}.zip
+        path: ${{github.workspace}}\build\${{ env.RELEASE_NAME }}.zip
 
     - name: Upload artefact to release
       uses: actions/upload-release-asset@v1.0.1
@@ -65,7 +68,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ${{github.workspace}}/build/${{ env.RELEASE_NAME }}.tar.gz
-        asset_name: ${{ env.RELEASE_NAME }}.tar.gz
-        asset_content_type: application/gzip
+        asset_path: ${{github.workspace}}/build/${{ env.RELEASE_NAME }}.zip
+        asset_name: ${{ env.RELEASE_NAME }}.zip
+        asset_content_type: application/zip
       if: github.event_name == 'release' && github.event.action == 'published'

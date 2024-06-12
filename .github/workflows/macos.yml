@@ -1,4 +1,4 @@
-name: linux
+name: macos
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
 jobs:
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
 
@@ -23,14 +23,14 @@ jobs:
     - name: Setup Build and Development Version
       run: |
         echo "BUILD_VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
-        echo "RELEASE_NAME=discomfort-${{ github.ref_name }}-linux" >> $GITHUB_ENV
+        echo "RELEASE_NAME=discomfort-${{ github.ref_name }}-macos" >> $GITHUB_ENV
       shell: bash
       if: github.event_name == 'push'
 
     - name: Setup Build and Release Version
       run: |
         echo "BUILD_VERSION=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
-        echo "RELEASE_NAME=discomfort-${{ github.event.release.tag_name }}-linux" >> $GITHUB_ENV
+        echo "RELEASE_NAME=discomfort-${{ github.event.release.tag_name }}-macos" >> $GITHUB_ENV
       shell: bash
       if: github.event_name == 'release' && github.event.action == 'published'
 
