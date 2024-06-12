@@ -62,8 +62,13 @@ jobs:
         name: ${{ env.RELEASE_NAME }}.zip
         path: ${{github.workspace}}\build\${{ env.RELEASE_NAME }}.zip
 
+    - name: Check current folder
+      shell: cmd
+      run: |
+        dir
+
     - name: Upload artefact to release
       uses: softprops/action-gh-release@v2
       with:
-        files: .\build\${{ env.RELEASE_NAME }}.zip
+        files: ./build/${{ env.RELEASE_NAME }}.zip
       if: github.event_name == 'release' && github.event.action == 'published'
