@@ -53,7 +53,7 @@ jobs:
       shell: cmd
       run: |
         copy /Y ${{github.workspace}}\build\discomfort ${{github.workspace}}\build\${{ env.RELEASE_NAME }}
-        cd build
+        cd ${{github.workspace}}\build
         7z a ${{ env.RELEASE_NAME }}.zip ${{ env.RELEASE_NAME }}
 
     - name: Upload artefacts
@@ -65,5 +65,5 @@ jobs:
     - name: Upload artefact to release
       uses: softprops/action-gh-release@v2
       with:
-        files: ${{github.workspace}}/build/${{ env.RELEASE_NAME }}.zip
+        files: ${{github.workspace}}\build\${{ env.RELEASE_NAME }}.zip
       if: github.event_name == 'release' && github.event.action == 'published'
