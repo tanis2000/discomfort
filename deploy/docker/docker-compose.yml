@@ -1,0 +1,16 @@
+version: '3'
+services:
+  discomfort:
+    image: tanis2000/discomfort:latest
+    networks:
+      - discomfort
+    environment:
+      - "TOKEN=<paste your token here>"
+      - "COMFY_ADDRESS=172.16.70.38"
+      - "COMFY_PORT=8188"
+    restart: always
+    volumes:
+      - ./data:/data
+
+networks:
+  discomfort:
