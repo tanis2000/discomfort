@@ -45,12 +45,19 @@ jobs:
 
       - name: Setup Build and Release Version in case of PR
         run: |
-          echo "BUILD_VERSION=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
-          echo "RELEASE_NAME=discomfort-${{ github.event.pull_request.head.sha }}-linux" >> $GITHUB_ENV
+          echo "BUILD_VERSION=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
+          echo "RELEASE_NAME=discomfort-${{ github.event.pull_request.head.ref }}-linux" >> $GITHUB_ENV
+          TAG=${{ github.event.release.ref }}
+          echo "IMAGE_VERSION=${TAG#v}" >> $GITHUB_ENV
         shell: bash
         if: github.event_name == 'pull_request'
 
-      - name: Build the Docker image
+      - name: Build the Docker image and push it
         run: |
           docker buildx build --platform linux/amd64,linux/arm64 -t tanis2000/discomfort:"${IMAGE_VERSION}" -t tanis2000/discomfort --build-arg BUILD_VERSION="${BUILD_VERSION}" --push -f ./deploy/docker/Dockerfile .
+        if: github.event_name == 'release' && github.event.action == 'published'
 
+      - name: Build the Docker image and skip pushing it
+        run: |
+          docker buildx build --platform linux/amd64,linux/arm64 -t tanis2000/discomfort:"${IMAGE_VERSION}" -t tanis2000/discomfort --build-arg BUILD_VERSION="${BUILD_VERSION}" -f ./deploy/docker/Dockerfile .
+        if: github.event_name == 'pull_request'  || github.event_name == 'push'
