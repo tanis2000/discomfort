@@ -42,3 +42,6 @@ The supported parameters are the following:
 | --address | The IP address or hostname of the ComfyUI server                                                                            | 
 | --port    | The port number of the ComfyUI server                                                                                       |
 
+# Documentation
+
+Further documentation is available in the [docs folder](docs/), starting from the [main page](docs/index.md)
