@@ -45,8 +45,8 @@ jobs:
 
       - name: Setup Build and Release Version in case of PR
         run: |
-          echo "BUILD_VERSION=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
-          echo "RELEASE_NAME=discomfort-${{ github.event.pull_request.head.ref }}-linux" >> $GITHUB_ENV
+          echo "BUILD_VERSION=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+          echo "RELEASE_NAME=discomfort-${{ github.event.pull_request.head.sha }}-linux" >> $GITHUB_ENV
         shell: bash
         if: github.event_name == 'pull_request'
 
