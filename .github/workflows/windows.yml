@@ -27,24 +27,31 @@ jobs:
       shell: bash
       if: github.event_name == 'push'
 
-    - name: Setup Build and Release Version
+    - name: Setup Build and Release Version in case of Release
       run: |
         echo "BUILD_VERSION=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
         echo "RELEASE_NAME=discomfort-${{ github.event.release.tag_name }}-windows" >> $GITHUB_ENV
       shell: bash
       if: github.event_name == 'release' && github.event.action == 'published'
 
+    - name: Setup Build and Release Version in case of PR
+      run: |
+        echo "BUILD_VERSION=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
+        echo "RELEASE_NAME=discomfort-${{ github.event.pull_request.head.ref }}-windows" >> $GITHUB_ENV
+      shell: bash
+      if: github.event_name == 'pull_request'
+
     - name: Setup Environment
       run: |
-        mkdir ${{github.workspace}}/build
-        cd ${{github.workspace}}/build
+        mkdir ${{github.workspace}}\build
+        cd ${{github.workspace}}\build
         mkdir ${{ env.RELEASE_NAME }}
-        cd ../..
+        cd ..\..
 
     - name: Build
       run: |
         go env -w CGO_ENABLED=1
-        go build -v -ldflags="-X 'discomfort/internal/build.Version=${BUILD_VERSION}' -X 'discomfort/internal/build.User=$(id -u -n)' -X 'discomfort/internal/build.Time=$(date)'" -o ${{github.workspace}}/build/discomfort
+        go build -v -ldflags="-X 'discomfort/internal/build.Version=${BUILD_VERSION}' -X 'discomfort/internal/build.User=$(id -u -n)' -X 'discomfort/internal/build.Time=$(date)'" -o ${{github.workspace}}\build\discomfort.exe
 
     - name: Test
       run: go test -v ./...
@@ -52,7 +59,7 @@ jobs:
     - name: Generate artefacts
       shell: cmd
       run: |
-        copy /Y ${{github.workspace}}\build\discomfort ${{github.workspace}}\build\${{ env.RELEASE_NAME }}
+        copy /Y ${{github.workspace}}\build\discomfort.exe ${{github.workspace}}\build\${{ env.RELEASE_NAME }}
         cd ${{github.workspace}}\build
         7z a ${{ env.RELEASE_NAME }}.zip ${{ env.RELEASE_NAME }}
 
@@ -70,5 +77,5 @@ jobs:
     - name: Upload artefact to release
       uses: softprops/action-gh-release@v2
       with:
-        files: ./build/${{ env.RELEASE_NAME }}.zip
+        files: .\build\${{ env.RELEASE_NAME }}.zip
       if: github.event_name == 'release' && github.event.action == 'published'

@@ -27,12 +27,19 @@ jobs:
       shell: bash
       if: github.event_name == 'push'
 
-    - name: Setup Build and Release Version
+    - name: Setup Build and Release Version in case of Release
       run: |
         echo "BUILD_VERSION=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
         echo "RELEASE_NAME=discomfort-${{ github.event.release.tag_name }}-linux" >> $GITHUB_ENV
       shell: bash
       if: github.event_name == 'release' && github.event.action == 'published'
+
+    - name: Setup Build and Release Version in case of PR
+      run: |
+        echo "BUILD_VERSION=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
+        echo "RELEASE_NAME=discomfort-${{ github.event.pull_request.head.ref }}-linux" >> $GITHUB_ENV
+      shell: bash
+      if: github.event_name == 'pull_request'
 
     - name: Setup Environment
       run: |
