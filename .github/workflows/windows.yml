@@ -36,15 +36,15 @@ jobs:
 
     - name: Setup Environment
       run: |
-        mkdir ${{github.workspace}}/build
-        cd ${{github.workspace}}/build
+        mkdir ${{github.workspace}}\build
+        cd ${{github.workspace}}\build
         mkdir ${{ env.RELEASE_NAME }}
-        cd ../..
+        cd ..\..
 
     - name: Build
       run: |
         go env -w CGO_ENABLED=1
-        go build -v -ldflags="-X 'discomfort/internal/build.Version=${BUILD_VERSION}' -X 'discomfort/internal/build.User=$(id -u -n)' -X 'discomfort/internal/build.Time=$(date)'" -o ${{github.workspace}}/build/discomfort.exe
+        go build -v -ldflags="-X 'discomfort/internal/build.Version=${BUILD_VERSION}' -X 'discomfort/internal/build.User=$(id -u -n)' -X 'discomfort/internal/build.Time=$(date)'" -o ${{github.workspace}}\build\discomfort.exe
 
     - name: Test
       run: go test -v ./...
@@ -70,5 +70,5 @@ jobs:
     - name: Upload artefact to release
       uses: softprops/action-gh-release@v2
       with:
-        files: ./build/${{ env.RELEASE_NAME }}.zip
+        files: .\build\${{ env.RELEASE_NAME }}.zip
       if: github.event_name == 'release' && github.event.action == 'published'
